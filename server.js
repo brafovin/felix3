@@ -401,7 +401,7 @@ io.on('connection', socket => {
     hp:100, maxHp:100, armor:0,
     money:1000, wanted:0, wantedTimer:0,
     inVehicle:null, dead:false,
-    color:`hsl(${Math.random()*360},70%,55%)`,
+    color:['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#e91e63','#00bcd4','#8bc34a','#ff5722'][Math.floor(Math.random()*12)],
     kills:0, deaths:0,
     weapons:defaultWeapons(), currentWeapon:'pistol',
     isOwner:false, godmode:false,

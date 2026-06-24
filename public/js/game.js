@@ -299,39 +299,76 @@ const arPickupMat = new THREE.MeshLambertMaterial({ color: 0x3498db, emissive: 0
 function getOrCreatePlayer(id, color, isOwnerFlag) {
   if (playerMeshes[id]) return playerMeshes[id];
   const col = isOwnerFlag ? 0xFFD700 : parseHex(color, 0x3498db);
-  const bodyMat = new THREE.MeshLambertMaterial({ color: col });
-  const headMat = new THREE.MeshLambertMaterial({ color: 0xf0c080 });
-  const shirtMat = new THREE.MeshLambertMaterial({ color: isOwnerFlag ? 0xddaa00 : darken(col, 0.6) });
+
+  const skinMat  = new THREE.MeshLambertMaterial({ color: 0xf0c080 });
+  const shirtMat = new THREE.MeshLambertMaterial({ color: col });
+  const pantsMat = new THREE.MeshLambertMaterial({ color: isOwnerFlag ? 0x1a1a00 : 0x1a1a3a });
+  const shoeMat  = new THREE.MeshLambertMaterial({ color: 0x111111 });
+  const hairMat  = new THREE.MeshLambertMaterial({ color: isOwnerFlag ? 0xcc9900 : 0x222222 });
+
   const g = new THREE.Group();
 
+  // Shoes
+  [-4.5, 4.5].forEach(ox => {
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 9), shoeMat);
+    shoe.position.set(ox, 2, 1.5);
+    g.add(shoe);
+  });
   // Legs
-  const legMat = new THREE.MeshLambertMaterial({ color: 0x222244 });
-  [-4, 4].forEach(ox => {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(7, 14, 7), legMat);
-    leg.position.set(ox, 7, 0);
+  [-4.5, 4.5].forEach(ox => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(6, 15, 7), pantsMat);
+    leg.position.set(ox, 11, 0);
+    leg.castShadow = true;
     g.add(leg);
   });
-  // Body
-  const body = new THREE.Mesh(pBodyGeo, shirtMat);
-  body.position.y = 22;
-  body.castShadow = true;
-  g.add(body);
+  // Torso/shirt
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(20, 18, 10), shirtMat);
+  torso.position.y = 26;
+  torso.castShadow = true;
+  g.add(torso);
+  // Collar / neck
+  const neck = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), skinMat);
+  neck.position.y = 36;
+  g.add(neck);
   // Head
-  const head = new THREE.Mesh(pHeadGeo, headMat);
-  head.position.y = 38;
+  const head = new THREE.Mesh(new THREE.BoxGeometry(14, 14, 12), skinMat);
+  head.position.y = 46;
   head.castShadow = true;
   g.add(head);
-  // Arms (aiming arm group rotates with player angle on server)
+  // Hair / cap
+  const capBrim = new THREE.Mesh(new THREE.BoxGeometry(17, 3, 15), hairMat);
+  capBrim.position.set(0, 53, 0);
+  g.add(capBrim);
+  const capTop  = new THREE.Mesh(new THREE.BoxGeometry(13, 7, 12), hairMat);
+  capTop.position.set(0, 58, -1);
+  g.add(capTop);
+  // Arms (aiming group)
   const armGroup = new THREE.Group();
-  const arm = new THREE.Mesh(pArmGeo, bodyMat);
-  arm.position.set(11, 0, 0);
-  armGroup.add(arm);
-  armGroup.position.set(0, 24, 0);
+  armGroup.position.set(0, 28, 0);
+  const armMat = new THREE.MeshLambertMaterial({ color: col });
+  const upperArm = new THREE.Mesh(new THREE.BoxGeometry(6, 11, 6), armMat);
+  upperArm.position.set(13, -2, 0);
+  armGroup.add(upperArm);
+  const foreArm  = new THREE.Mesh(new THREE.BoxGeometry(5, 10, 5), skinMat);
+  foreArm.position.set(20, -7, 0);
+  armGroup.add(foreArm);
   g.add(armGroup);
 
-  g.position.y = 0;
+  // Crown for owner
+  if (isOwnerFlag) {
+    const crownMat = new THREE.MeshLambertMaterial({ color: 0xFFD700, emissive: 0xaa7700, emissiveIntensity: 0.4 });
+    const crownBase = new THREE.Mesh(new THREE.BoxGeometry(16, 5, 14), crownMat);
+    crownBase.position.set(0, 64, 0);
+    g.add(crownBase);
+    [[-5, 69], [0, 72], [5, 69]].forEach(([cx, cy]) => {
+      const spike = new THREE.Mesh(new THREE.BoxGeometry(3, 8, 3), crownMat);
+      spike.position.set(cx, cy, 0);
+      g.add(spike);
+    });
+  }
+
   scene.add(g);
-  playerMeshes[id] = { group: g, shirtMat, headMat, armGroup };
+  playerMeshes[id] = { group: g, shirtMat, headMat: skinMat, armGroup };
   return playerMeshes[id];
 }
 
@@ -343,131 +380,233 @@ function removePlayerMesh(id) {
 
 // ── Vehicle Mesh Factory ───────────────────────────────────────────────────────
 function makeVehicleGroup(type, colorHex, isPolice) {
-  const vDefs = {
-    sedan:  { bw:42, bh:14, bd:20, rw:0.55, rd:0.85, rh:12, rox:-0.08 },
-    sports: { bw:40, bh:12, bd:18, rw:0.50, rd:0.90, rh:10, rox:-0.05 },
-    truck:  { bw:58, bh:20, bd:26, rw:0.45, rd:0.80, rh:18, rox:-0.15 },
-    bike:   { bw:30, bh: 8, bd:10, rw:0,    rd:0,    rh: 0, rox: 0    },
-    tank:   { bw:60, bh:22, bd:30, rw:0,    rd:0,    rh: 0, rox: 0    },
-  };
-  const d = vDefs[type] || vDefs.sedan;
-  const col = isPolice ? 0xecf0f1 : colorHex;
   const g = new THREE.Group();
+  const col = isPolice ? 0xf5f5f5 : colorHex;
 
-  // Body
-  const bodyMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.45, metalness: 0.55 });
+  if (type === 'bike') {
+    // Frame
+    const frameMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.3, metalness: 0.8 });
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(32, 5, 5), frameMat);
+    frame.position.y = 9;
+    frame.castShadow = true;
+    g.add(frame);
+    g.userData.body = frame;
+    g.userData.origColor = col;
+    // Handlebar
+    const hbMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+    const hb = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 22), hbMat);
+    hb.position.set(12, 15, 0);
+    g.add(hb);
+    // Engine block
+    const eng = new THREE.Mesh(new THREE.BoxGeometry(10, 9, 10),
+      new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.9, roughness: 0.2 }));
+    eng.position.set(0, 10, 0);
+    g.add(eng);
+    // Wheels
+    const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+    const rimMat   = new THREE.MeshLambertMaterial({ color: 0x888888 });
+    [-14, 14].forEach(wx => {
+      const tire = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 5, 12), wheelMat);
+      tire.rotation.z = Math.PI/2;
+      tire.position.set(wx, 7, 0);
+      tire.castShadow = true;
+      g.add(tire);
+      const rim = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 5.5, 8), rimMat);
+      rim.rotation.z = Math.PI/2;
+      rim.position.set(wx, 7, 0);
+      g.add(rim);
+    });
+    return g;
+  }
+
+  if (type === 'tank') {
+    const hullMat  = new THREE.MeshStandardMaterial({ color: 0x2d5016, roughness: 0.8, metalness: 0.3 });
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(64, 18, 32), hullMat);
+    hull.position.y = 14;
+    hull.castShadow = true;
+    g.add(hull);
+    g.userData.body = hull;
+    g.userData.origColor = 0x2d5016;
+    // Treads
+    const treadMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+    [-19, 19].forEach(wz => {
+      const tread = new THREE.Mesh(new THREE.BoxGeometry(68, 10, 8), treadMat);
+      tread.position.set(0, 7, wz);
+      g.add(tread);
+      // Tread wheels
+      for (let wx = -28; wx <= 28; wx += 14) {
+        const tw = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 7, 8), treadMat);
+        tw.rotation.z = Math.PI/2;
+        tw.position.set(wx, 7, wz);
+        g.add(tw);
+      }
+    });
+    // Turret
+    const turretMat = new THREE.MeshStandardMaterial({ color: 0x1e3a0a, roughness: 0.7 });
+    const turret = new THREE.Mesh(new THREE.BoxGeometry(30, 12, 28), turretMat);
+    turret.position.set(4, 30, 0);
+    turret.castShadow = true;
+    g.add(turret);
+    // Barrel
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2, 36, 8),
+      new THREE.MeshLambertMaterial({ color: 0x0a0a0a }));
+    barrel.rotation.z = Math.PI/2;
+    barrel.position.set(30, 28, 0);
+    g.add(barrel);
+    // Commander hatch
+    const hatch = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 4, 10), turretMat);
+    hatch.position.set(-4, 37, 0);
+    g.add(hatch);
+    return g;
+  }
+
+  // Dimensions per type
+  const dims = {
+    sedan:  { bw:44, bh:13, bd:20, cw:26, ch:12, cd:18, cox:-3, cheight:19 },
+    sports: { bw:44, bh:10, bd:20, cw:22, ch: 9, cd:17, cox: 2, cheight:15 },
+    truck:  { bw:60, bh:20, bd:26, cw:26, ch:18, cd:24, cox:-14,cheight:28 },
+  };
+  const d = dims[type] || dims.sedan;
+
+  const bodyMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.35, metalness: 0.65 });
+
+  // Main body
   const body = new THREE.Mesh(new THREE.BoxGeometry(d.bw, d.bh, d.bd), bodyMat);
   body.position.y = d.bh/2 + 6;
   body.castShadow = true;
   g.add(body);
   g.userData.body = body;
+  g.userData.origColor = col;
 
-  if (type === 'bike') {
-    // Bike frame
-    const frameMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.4, metalness: 0.7 });
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(22, 4, 4), frameMat);
-    frame.position.y = 12;
-    g.add(frame);
-  } else if (type === 'tank') {
-    body.material.color.set(0x2d5016);
-    const turret = new THREE.Mesh(new THREE.BoxGeometry(24, 10, 24),
-      new THREE.MeshStandardMaterial({ color: 0x1e3a0a, roughness: 0.6, metalness: 0.3 }));
-    turret.position.y = d.bh + 11;
-    turret.castShadow = true;
-    g.add(turret);
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 32, 8),
-      new THREE.MeshLambertMaterial({ color: 0x111111 }));
-    barrel.rotation.z = Math.PI/2;
-    barrel.position.set(22, d.bh + 8, 0);
-    g.add(barrel);
-  } else {
-    // Cabin
-    const cabMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.4, metalness: 0.6 });
-    const cab = new THREE.Mesh(
-      new THREE.BoxGeometry(d.bw * d.rw, d.rh, d.bd * d.rd), cabMat
-    );
-    cab.position.set(d.bw * d.rox, d.bh + d.rh/2 + 6, 0);
-    cab.castShadow = true;
-    g.add(cab);
-    // Windshield glass
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, transparent: true, opacity: 0.55, roughness: 0.1 });
-    const glass = new THREE.Mesh(new THREE.PlaneGeometry(d.bw * d.rw - 4, d.rh - 3), glassMat);
-    glass.position.set(d.bw * d.rox + d.bw * d.rw / 2, d.bh + d.rh/2 + 6, 0);
-    glass.rotation.y = Math.PI/2;
-    g.add(glass);
-  }
+  // Cabin / roof
+  const cabMat = new THREE.MeshStandardMaterial({ color: isPolice ? 0x1a1a1a : darken(col, 0.88), roughness: 0.4, metalness: 0.6 });
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(d.cw, d.ch, d.cd), cabMat);
+  cab.position.set(d.cox, d.cheight, 0);
+  cab.castShadow = true;
+  g.add(cab);
 
-  // Wheels
-  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
-  const wheelGeo = new THREE.CylinderGeometry(5.5, 5.5, 7, 10);
-  if (type === 'bike') {
-    [d.bw/2 - 2, -d.bw/2 + 2].forEach(wx => {
-      const w = new THREE.Mesh(wheelGeo, wheelMat);
-      w.rotation.z = Math.PI/2;
-      w.position.set(wx, 6, 0);
-      g.add(w);
-    });
-  } else {
-    [[d.bw/2+1, d.bd/2-5], [d.bw/2+1, -d.bd/2+5],
-     [-d.bw/2-1, d.bd/2-5], [-d.bw/2-1, -d.bd/2+5]].forEach(([wx, wz]) => {
-      const w = new THREE.Mesh(wheelGeo, wheelMat);
-      w.rotation.z = Math.PI/2;
-      w.position.set(wx, 6, wz);
-      w.castShadow = true;
-      g.add(w);
-    });
-    // Hubcaps
-    const hubMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
-    [[d.bw/2+5, d.bd/2-5], [d.bw/2+5, -d.bd/2+5],
-     [-d.bw/2-5, d.bd/2-5], [-d.bw/2-5, -d.bd/2+5]].forEach(([wx, wz]) => {
-      const h = new THREE.Mesh(new THREE.CircleGeometry(4, 8), hubMat);
-      h.rotation.y = wx > 0 ? -Math.PI/2 : Math.PI/2;
-      h.position.set(wx, 6, wz);
-      g.add(h);
-    });
+  // Windshields (glass)
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, transparent: true, opacity: 0.5, roughness: 0.05, metalness: 0.1 });
+  // Front glass
+  const frontGlass = new THREE.Mesh(new THREE.PlaneGeometry(d.cw - 4, d.ch - 2), glassMat);
+  frontGlass.position.set(d.cox + d.cw/2, d.cheight, 0);
+  frontGlass.rotation.y = Math.PI/2;
+  g.add(frontGlass);
+  // Rear glass
+  const rearGlass = new THREE.Mesh(new THREE.PlaneGeometry(d.cw - 6, d.ch - 3), glassMat);
+  rearGlass.position.set(d.cox - d.cw/2, d.cheight, 0);
+  rearGlass.rotation.y = -Math.PI/2;
+  g.add(rearGlass);
+
+  // Side windows
+  const sideGlassMat = glassMat.clone();
+  [-d.bd/2, d.bd/2].forEach(wz => {
+    const sg = new THREE.Mesh(new THREE.PlaneGeometry(d.cw - 8, d.ch - 4), sideGlassMat);
+    sg.position.set(d.cox, d.cheight, wz);
+    sg.rotation.y = wz < 0 ? Math.PI : 0;
+    g.add(sg);
+  });
+
+  // Wheels with rims
+  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+  const rimMat   = new THREE.MeshLambertMaterial({ color: 0xbbbbbb });
+  const wPos = [
+    [d.bw/2+1, d.bd/2-5], [d.bw/2+1, -d.bd/2+5],
+    [-d.bw/2-1, d.bd/2-5], [-d.bw/2-1, -d.bd/2+5],
+  ];
+  for (const [wx, wz] of wPos) {
+    const tire = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 7, 12), wheelMat);
+    tire.rotation.z = Math.PI/2;
+    tire.position.set(wx, 7, wz);
+    tire.castShadow = true;
+    g.add(tire);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 7.5, 8), rimMat);
+    rim.rotation.z = Math.PI/2;
+    rim.position.set(wx + (wx > 0 ? 0.5 : -0.5), 7, wz);
+    g.add(rim);
   }
 
   // Headlights
-  if (type !== 'bike') {
-    const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
-    [d.bd/2 - 4, -d.bd/2 + 4].forEach(wz => {
-      const hl = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 5), hlMat);
-      hl.position.set(d.bw/2 - 1, d.bh/2 + 6, wz);
-      g.add(hl);
-    });
-  }
+  const hlMat = new THREE.MeshBasicMaterial({ color: 0xffffcc });
+  const rlMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
+  [-d.bd/2+4, d.bd/2-4].forEach(wz => {
+    const hl = new THREE.Mesh(new THREE.BoxGeometry(3, 5, 6), hlMat);
+    hl.position.set(d.bw/2, d.bh/2+6, wz);
+    g.add(hl);
+    const rl = new THREE.Mesh(new THREE.BoxGeometry(2, 4, 5), rlMat);
+    rl.position.set(-d.bw/2, d.bh/2+6, wz);
+    g.add(rl);
+  });
 
-  // Police stripe & siren bar
+  // Bumpers
+  const bumperMat = new THREE.MeshLambertMaterial({ color: isPolice ? 0x1a1a1a : 0x222222 });
+  const fBumper = new THREE.Mesh(new THREE.BoxGeometry(4, 6, d.bd+4), bumperMat);
+  fBumper.position.set(d.bw/2+2, 9, 0);
+  g.add(fBumper);
+  const rBumper = fBumper.clone();
+  rBumper.position.x = -d.bw/2-2;
+  g.add(rBumper);
+
+  // Police-specific: black/white stripe + siren bar
   if (isPolice) {
-    const stripeMat = new THREE.MeshLambertMaterial({ color: 0x002fa7 });
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(d.bw + 2, 3, 4), stripeMat);
-    stripe.position.set(0, d.bh/2 + 6, d.bd/2 - 2);
+    const stripeMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(d.bw+2, 5, d.bd+2), stripeMat);
+    stripe.position.set(0, d.bh/2+6, 0);
     g.add(stripe);
 
-    const sirenBar = new THREE.Group();
-    sirenBar.position.set(0, d.bh + (d.rh||0) + 9, 0);
-    const sirenR = new THREE.Mesh(new THREE.BoxGeometry(7, 5, 5),
-      new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0 }));
-    sirenR.position.x = 5;
-    const sirenB = new THREE.Mesh(new THREE.BoxGeometry(7, 5, 5),
-      new THREE.MeshStandardMaterial({ color: 0x0033ff, emissive: 0x0033ff, emissiveIntensity: 0 }));
-    sirenB.position.x = -5;
-    sirenBar.add(sirenR, sirenB);
+    const sirenBarMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+    const sirenBar = new THREE.Mesh(new THREE.BoxGeometry(d.cw-4, 4, 6), sirenBarMat);
+    sirenBar.position.set(d.cox, d.cheight + d.ch/2 + 4, 0);
     g.add(sirenBar);
+
+    // Siren lights
+    const sirenR = new THREE.Mesh(new THREE.BoxGeometry(8, 6, 5),
+      new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0 }));
+    sirenR.position.set(d.cox + 5, d.cheight + d.ch/2 + 4, 0);
+    const sirenB = new THREE.Mesh(new THREE.BoxGeometry(8, 6, 5),
+      new THREE.MeshStandardMaterial({ color: 0x0022ff, emissive: 0x0022ff, emissiveIntensity: 0 }));
+    sirenB.position.set(d.cox - 5, d.cheight + d.ch/2 + 4, 0);
+    g.add(sirenR, sirenB);
     g.userData.sirenR = sirenR;
     g.userData.sirenB = sirenB;
 
-    const sirenLight = new THREE.PointLight(0xff2200, 0, 180);
-    sirenLight.position.set(0, d.bh + 20, 0);
+    // Siren light
+    const sirenLight = new THREE.PointLight(0xff2200, 0, 200);
+    sirenLight.position.set(d.cox, d.cheight + d.ch/2 + 10, 0);
     g.add(sirenLight);
     g.userData.sirenLight = sirenLight;
+
+    // Police star decal (box approximation on side)
+    const starMat = new THREE.MeshLambertMaterial({ color: 0xf5d020 });
+    [-1, 1].forEach(side => {
+      const star = new THREE.Mesh(new THREE.BoxGeometry(2, 8, 8), starMat);
+      star.position.set(0, d.bh/2+9, side*(d.bd/2));
+      g.add(star);
+    });
   }
 
-  // Headlight point-lights (off by day)
-  const headLight = new THREE.PointLight(0xffffcc, 0, 200);
-  headLight.position.set(d.bw/2 + 5, d.bh/2 + 6, 0);
+  // Headlight point light (for night driving)
+  const headLight = new THREE.PointLight(0xffffcc, 0, 220);
+  headLight.position.set(d.bw/2 + 8, d.bh/2 + 6, 0);
   g.add(headLight);
   g.userData.headLight = headLight;
+
+  // Truck-specific: flat bed
+  if (type === 'truck') {
+    const bedMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(28, 4, 24), bedMat);
+    bed.position.set(-20, d.bh + 4, 0);
+    g.add(bed);
+    // Bed rails
+    [[0, 2, 12], [0, 2, -12], [-14, 4, 0]].forEach(([rx, ry, rz]) => {
+      const railGeo = rz === 0
+        ? new THREE.BoxGeometry(4, 8, 26)
+        : new THREE.BoxGeometry(30, 6, 3);
+      const rail = new THREE.Mesh(railGeo, bedMat);
+      rail.position.set(bed.position.x + rx, d.bh + 4 + ry, rz);
+      g.add(rail);
+    });
+  }
 
   return g;
 }
@@ -871,13 +1010,15 @@ function update(dt, ts) {
       Audio3D.footstep();
     }
     myPlayer.speed = 0;
-    updateAimAngle();
     myPlayer.angle = aimAngle;
     if (Audio3D._engineOsc) Audio3D.stopEngine();
   }
 
   myPlayer.x = Math.max(10, Math.min(worldW-10, myPlayer.x));
   myPlayer.y = Math.max(10, Math.min(worldH-10, myPlayer.y));
+
+  // Always update aim (needed for drive-by too)
+  updateAimAngle();
 
   // Shooting
   const wKey = myPlayer.currentWeapon || 'pistol';
@@ -989,7 +1130,7 @@ function render3D(ts) {
     pm.group.rotation.y = Math.PI/2 - p.angle;
     // Godmode/owner shimmer
     const glowI = (p.godmode || p.isOwner) ? (0.25 + 0.15 * Math.sin(ts * 0.006)) : 0;
-    pm.shirtMat.emissive = _glowColor;
+    pm.shirtMat.emissive.copy(_glowColor);
     pm.shirtMat.emissiveIntensity = glowI;
   }
   // Remove stale player meshes
@@ -1009,8 +1150,14 @@ function render3D(ts) {
       vm.rotation.y = Math.PI/2 - v.angle;
       // Damage color
       const hpPct = v.hp / (v.maxHp || 100);
-      if (vm.userData.body && hpPct < 0.35) {
-        vm.userData.body.material.color.setHex(hpPct < 0.15 ? 0x333333 : 0x777777);
+      if (vm.userData.body) {
+        if (hpPct < 0.15) {
+          vm.userData.body.material.color.setHex(0x333333);
+        } else if (hpPct < 0.35) {
+          vm.userData.body.material.color.setHex(0x777777);
+        } else if (vm.userData.origColor !== undefined) {
+          vm.userData.body.material.color.setHex(vm.userData.origColor);
+        }
       }
       if (vm.userData.headLight) vm.userData.headLight.intensity = 0;
     }
@@ -1042,17 +1189,40 @@ function render3D(ts) {
   }
 
   // -- NPC meshes
-  const npcColors = [0xaaaaaa, 0x884422, 0x226688, 0x668822, 0x882266];
+  const npcShirtColors  = [0xcc3333, 0x3366cc, 0x33aa55, 0xcc8833, 0x8833cc, 0x33aacc, 0xcc33aa];
+  const npcPantsColors  = [0x222244, 0x442222, 0x224422, 0x444422, 0x442244];
+  const npcSkinColors   = [0xf0c080, 0xd4956a, 0xc47840, 0x8b5e3c, 0xffe0bd];
+  function npcHash(id) { let h=0; for(let i=0;i<id.length;i++) h=(h*31+id.charCodeAt(i))>>>0; return h; }
   for (const npc of npcs) {
     if (!npcMeshes[npc.id]) {
       const g = new THREE.Group();
-      const col = npcColors[npc.id.charCodeAt(4) % npcColors.length];
-      const bm = new THREE.MeshLambertMaterial({ color: col });
-      const hm = new THREE.MeshLambertMaterial({ color: 0xf0c080 });
-      const b = new THREE.Mesh(npcBodyGeo, bm);
-      b.position.y = 8; b.castShadow = true; g.add(b);
-      const h = new THREE.Mesh(npcHeadGeo, hm);
-      h.position.y = 20; g.add(h);
+      const h = npcHash(npc.id);
+      const shirtCol = npcShirtColors[h % npcShirtColors.length];
+      const pantsCol = npcPantsColors[(h >> 4) % npcPantsColors.length];
+      const skinCol  = npcSkinColors[(h >> 8)  % npcSkinColors.length];
+      const shirtMat = new THREE.MeshLambertMaterial({ color: shirtCol });
+      const pantsMat = new THREE.MeshLambertMaterial({ color: pantsCol });
+      const skinMat  = new THREE.MeshLambertMaterial({ color: skinCol });
+      const shoeMat  = new THREE.MeshLambertMaterial({ color: 0x111111 });
+      // Legs
+      [-3, 3].forEach(ox => {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(5, 12, 5), pantsMat);
+        leg.position.set(ox, 6, 0); leg.castShadow = true; g.add(leg);
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(5, 3, 7), shoeMat);
+        shoe.position.set(ox, 1.5, 1); g.add(shoe);
+      });
+      // Body/shirt
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(11, 14, 8), shirtMat);
+      torso.position.y = 19; torso.castShadow = true; g.add(torso);
+      // Head
+      const head = new THREE.Mesh(npcHeadGeo, skinMat);
+      head.position.y = 30; g.add(head);
+      // Hat (random)
+      if ((h & 1) === 0) {
+        const hat = new THREE.Mesh(new THREE.BoxGeometry(9, 5, 9),
+          new THREE.MeshLambertMaterial({ color: shirtCol }));
+        hat.position.y = 36; g.add(hat);
+      }
       scene.add(g);
       npcMeshes[npc.id] = g;
     }
@@ -1060,8 +1230,12 @@ function render3D(ts) {
     m.visible = npc.state !== 'dead';
     m.position.set(npc.x, 0, npc.y);
     m.rotation.y = Math.PI/2 - npc.angle;
-    // Flee animation: slight bob
-    if (npc.state === 'flee') m.position.y = Math.abs(Math.sin(ts * 0.02)) * 3;
+    // Walk/flee bob animation
+    if (npc.state === 'flee') {
+      m.position.y = Math.abs(Math.sin(ts * 0.025)) * 4;
+    } else {
+      m.position.y = Math.abs(Math.sin(ts * 0.01 + npcHash(npc.id) * 0.3)) * 1.5;
+    }
   }
   const npcIds = new Set(npcs.map(n => n.id));
   for (const id of Object.keys(npcMeshes)) {
