@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GTA Online Clone</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+
+    #lobby {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      z-index: 100;
+    }
+    #lobby h1 {
+      font-size: 3.5rem; font-weight: 900; letter-spacing: 4px;
+      background: linear-gradient(90deg, #e74c3c, #f39c12, #e74c3c);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      text-shadow: none; margin-bottom: 0.3rem;
+    }
+    #lobby p.sub { color: #aaa; margin-bottom: 2rem; font-size: 1rem; letter-spacing: 2px; }
+    #lobby input {
+      background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.2);
+      color: #fff; padding: 0.8rem 1.5rem; border-radius: 8px; font-size: 1.1rem;
+      outline: none; text-align: center; width: 260px; margin-bottom: 1rem;
+    }
+    #lobby input:focus { border-color: #e74c3c; }
+    #lobby button {
+      background: linear-gradient(90deg, #e74c3c, #c0392b);
+      border: none; color: #fff; padding: 0.9rem 2.5rem;
+      border-radius: 8px; font-size: 1.1rem; font-weight: 700;
+      cursor: pointer; letter-spacing: 1px; transition: transform 0.1s;
+    }
+    #lobby button:hover { transform: scale(1.05); }
+    .controls-hint {
+      margin-top: 2rem; color: #666; font-size: 0.82rem; text-align: center; line-height: 1.8;
+    }
+    .controls-hint span { color: #f39c12; }
+
+    #canvas { display: block; }
+
+    /* HUD */
+    #hud {
+      position: fixed; inset: 0; pointer-events: none;
+      display: none;
+    }
+    #health-bar-wrap {
+      position: absolute; bottom: 24px; left: 24px;
+      width: 200px;
+    }
+    #health-label { font-size: 0.75rem; color: #aaa; margin-bottom: 4px; }
+    #health-bg {
+      background: rgba(0,0,0,0.5); border-radius: 4px; height: 14px;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    #health-fill {
+      height: 100%; border-radius: 4px; transition: width 0.2s;
+      background: linear-gradient(90deg, #2ecc71, #27ae60);
+    }
+    #money {
+      position: absolute; bottom: 24px; right: 24px;
+      font-size: 1.8rem; font-weight: 900; color: #2ecc71;
+      text-shadow: 0 0 10px rgba(46,204,113,0.5);
+    }
+    #wanted-wrap {
+      position: absolute; bottom: 70px; right: 24px;
+      display: flex; gap: 5px; align-items: center;
+    }
+    .star { font-size: 1.3rem; color: #333; }
+    .star.active { color: #f1c40f; text-shadow: 0 0 8px #f1c40f; }
+    #vehicle-indicator {
+      position: absolute; bottom: 24px; left: 240px;
+      font-size: 0.8rem; color: #3498db; font-weight: 700;
+      padding: 6px 12px; background: rgba(0,0,0,0.5); border-radius: 6px;
+      border: 1px solid #3498db; display: none;
+    }
+    #minimap {
+      position: absolute; bottom: 24px; right: 24px;
+      /* repositioned after stars */
+      bottom: 110px;
+      width: 180px; height: 180px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 50%;
+      overflow: hidden;
+      background: rgba(0,0,0,0.7);
+    }
+    #minimap-canvas { border-radius: 50%; }
+    #scoreboard {
+      position: absolute; top: 24px; right: 24px;
+      background: rgba(0,0,0,0.6); border-radius: 8px;
+      padding: 10px 14px; min-width: 200px; font-size: 0.78rem;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    #scoreboard h3 { color: #f39c12; margin-bottom: 6px; font-size: 0.85rem; letter-spacing: 1px; }
+    .score-row { display: flex; justify-content: space-between; margin: 2px 0; color: #ddd; }
+    .score-row .kills { color: #e74c3c; }
+    .score-row .money-s { color: #2ecc71; }
+    #notifications {
+      position: absolute; top: 24px; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; gap: 6px; align-items: center;
+    }
+    .notif {
+      background: rgba(0,0,0,0.75); border-radius: 6px;
+      padding: 8px 18px; font-size: 0.9rem; font-weight: 600;
+      border-left: 4px solid #e74c3c; animation: fadeSlide 0.3s ease;
+    }
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    #crosshair {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    #crosshair::before, #crosshair::after {
+      content: ''; position: absolute; background: rgba(255,255,255,0.7);
+    }
+    #crosshair::before { width: 14px; height: 1px; left: -7px; top: 0; }
+    #crosshair::after  { width: 1px; height: 14px; left: 0; top: -7px; }
+    #dead-overlay {
+      position: absolute; inset: 0; display: none;
+      background: rgba(0,0,0,0.6);
+      flex-direction: column; align-items: center; justify-content: center;
+    }
+    #dead-overlay.show { display: flex; }
+    #dead-overlay h2 { color: #e74c3c; font-size: 3rem; font-weight: 900; }
+    #dead-overlay p  { color: #aaa; margin-top: 0.5rem; }
+    #vehicle-hp-wrap {
+      position: absolute; bottom: 44px; left: 24px;
+      width: 200px; display: none;
+    }
+    #vehicle-hp-label { font-size: 0.75rem; color: #3498db; margin-bottom: 4px; }
+    #vehicle-hp-fill {
+      height: 10px; border-radius: 4px; transition: width 0.2s;
+      background: linear-gradient(90deg, #3498db, #2980b9);
+    }
+    #ammo-display {
+      position: absolute; bottom: 64px; left: 24px;
+      font-size: 0.8rem; color: #f39c12;
+    }
+    #store-prompt {
+      position: absolute; top: 45%; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.8); border: 1px solid #f39c12;
+      padding: 8px 18px; border-radius: 6px; color: #f39c12;
+      font-size: 0.85rem; font-weight: 700; display: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Lobby -->
+<div id="lobby">
+  <h1>GTA ONLINE</h1>
+  <p class="sub">MULTIPLAYER CLONE</p>
+  <input id="name-input" type="text" placeholder="Dein Name" maxlength="20" />
+  <button id="play-btn">SPIELEN</button>
+  <div class="controls-hint">
+    <span>WASD</span> Bewegen &nbsp;|&nbsp; <span>Maus</span> Zielen &nbsp;|&nbsp; <span>Klick</span> Schießen<br>
+    <span>E</span> Auto ein/aussteigen &nbsp;|&nbsp; <span>F</span> Store ausrauben<br>
+    <span>Shift</span> Sprinten / Gas
+  </div>
+</div>
+
+<!-- Game Canvas -->
+<canvas id="canvas"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="crosshair"></div>
+
+  <div id="health-bar-wrap">
+    <div id="health-label">GESUNDHEIT</div>
+    <div id="health-bg"><div id="health-fill" style="width:100%"></div></div>
+  </div>
+
+  <div id="vehicle-hp-wrap">
+    <div id="vehicle-hp-label">FAHRZEUG</div>
+    <div id="health-bg" style="background:rgba(0,0,0,0.5);border-radius:4px;height:10px;border:1px solid rgba(255,255,255,0.15)">
+      <div id="vehicle-hp-fill" style="width:100%"></div>
+    </div>
+  </div>
+
+  <div id="ammo-display">∞ Munition</div>
+  <div id="vehicle-indicator">🚗 IM AUTO — E zum Aussteigen</div>
+
+  <div id="money">$0</div>
+
+  <div id="wanted-wrap">
+    <span class="star" id="s1">★</span>
+    <span class="star" id="s2">★</span>
+    <span class="star" id="s3">★</span>
+    <span class="star" id="s4">★</span>
+    <span class="star" id="s5">★</span>
+  </div>
+
+  <canvas id="minimap-canvas" id="minimap-canvas" width="180" height="180"
+    style="position:absolute;bottom:110px;right:24px;border-radius:50%;border:2px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.7)">
+  </canvas>
+
+  <div id="scoreboard">
+    <h3>🏆 RANGLISTE</h3>
+    <div id="score-list"></div>
+  </div>
+
+  <div id="notifications"></div>
+
+  <div id="store-prompt">F — Store ausrauben</div>
+
+  <div id="dead-overlay">
+    <h2>WASTED</h2>
+    <p>Du respawnst in 3 Sekunden...</p>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/game.js"></script>
+</body>
+</html>
