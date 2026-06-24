@@ -3,237 +3,199 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GTA Online Clone</title>
+  <title>GTA Online 3D</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #1a1a2e; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#000;color:#fff;font-family:'Segoe UI',sans-serif;overflow:hidden;}
+    #three-canvas{position:fixed;inset:0;display:block;}
 
-    /* ── Lobby ── */
-    #lobby {
-      position: fixed; inset: 0; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); z-index: 100;
-    }
-    #lobby h1 {
-      font-size: 3.5rem; font-weight: 900; letter-spacing: 4px;
-      background: linear-gradient(90deg,#e74c3c,#f39c12,#e74c3c);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    #lobby .sub { color: #aaa; margin-bottom: 2rem; letter-spacing: 3px; font-size: .9rem; }
-    #lobby input {
-      background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.2);
-      color: #fff; padding: .8rem 1.5rem; border-radius: 8px; font-size: 1.1rem;
-      outline: none; text-align: center; width: 280px; margin-bottom: 1rem;
-    }
-    #lobby input:focus { border-color: #e74c3c; }
-    #lobby button {
-      background: linear-gradient(90deg,#e74c3c,#c0392b); border: none; color: #fff;
-      padding: .9rem 2.5rem; border-radius: 8px; font-size: 1.1rem; font-weight: 700;
-      cursor: pointer; transition: transform .1s;
-    }
-    #lobby button:hover { transform: scale(1.05); }
-    .ctrl { margin-top: 2rem; color: #555; font-size: .8rem; line-height: 2; text-align: center; }
-    .ctrl span { color: #f39c12; }
+    /* Lobby */
+    #lobby{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);z-index:100;}
+    #lobby h1{font-size:3.8rem;font-weight:900;letter-spacing:5px;
+      background:linear-gradient(90deg,#e74c3c,#f39c12,#e74c3c);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    #lobby .sub{color:#777;margin-bottom:2rem;letter-spacing:3px;font-size:.9rem;}
+    #lobby input{background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);
+      color:#fff;padding:.8rem 1.5rem;border-radius:8px;font-size:1.1rem;
+      outline:none;text-align:center;width:280px;margin-bottom:1rem;}
+    #lobby input:focus{border-color:#e74c3c;}
+    #lobby button{background:linear-gradient(90deg,#e74c3c,#c0392b);border:none;color:#fff;
+      padding:.9rem 2.5rem;border-radius:8px;font-size:1.1rem;font-weight:700;cursor:pointer;transition:transform .1s;}
+    #lobby button:hover{transform:scale(1.05);}
+    .ctrl{margin-top:2rem;color:#444;font-size:.8rem;line-height:2;text-align:center;}
+    .ctrl span{color:#f39c12;}
 
-    /* ── Canvas ── */
-    #canvas { display: block; }
+    /* HUD layer */
+    #hud{position:fixed;inset:0;pointer-events:none;display:none;}
 
-    /* ── HUD ── */
-    #hud { position: fixed; inset: 0; pointer-events: none; display: none; }
+    /* Health */
+    #hp-wrap{position:absolute;bottom:60px;left:24px;width:200px;}
+    #hp-label{font-size:.7rem;color:#aaa;margin-bottom:3px;letter-spacing:1px;}
+    .bbar{background:rgba(0,0,0,.6);border-radius:4px;height:12px;border:1px solid rgba(255,255,255,.1);overflow:hidden;}
+    #hp-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#2ecc71,#27ae60);transition:width .2s;}
+    #armor-wrap{position:absolute;bottom:84px;left:24px;width:200px;display:none;}
+    #armor-label{font-size:.7rem;color:#3498db;margin-bottom:3px;letter-spacing:1px;}
+    #armor-fill{height:10px;border-radius:4px;background:linear-gradient(90deg,#3498db,#2980b9);transition:width .2s;}
+    #vhp-wrap{position:absolute;bottom:108px;left:24px;width:200px;display:none;}
+    #vhp-label{font-size:.7rem;color:#e67e22;margin-bottom:3px;letter-spacing:1px;}
+    #vhp-fill{height:10px;border-radius:4px;background:linear-gradient(90deg,#e67e22,#d35400);transition:width .2s;}
+    #fuel-wrap{position:absolute;bottom:130px;left:24px;width:200px;display:none;}
+    #fuel-label{font-size:.7rem;color:#f1c40f;margin-bottom:3px;letter-spacing:1px;}
+    #fuel-fill{height:8px;border-radius:4px;background:linear-gradient(90deg,#f1c40f,#f39c12);transition:width .3s;}
 
-    /* health */
-    #hp-wrap  { position: absolute; bottom: 28px; left: 24px; width: 210px; }
-    #hp-label { font-size: .72rem; color: #aaa; margin-bottom: 3px; letter-spacing: 1px; }
-    .bar-bg   { background: rgba(0,0,0,.55); border-radius: 4px; height: 13px; border: 1px solid rgba(255,255,255,.1); overflow: hidden; }
-    #hp-fill  { height: 100%; border-radius: 4px; transition: width .2s; background: linear-gradient(90deg,#2ecc71,#27ae60); }
+    /* Money */
+    #money{position:absolute;bottom:28px;right:240px;font-size:2rem;font-weight:900;color:#2ecc71;
+      text-shadow:0 0 14px rgba(46,204,113,.5);}
+    /* Wanted */
+    #wanted-wrap{position:absolute;bottom:34px;right:24px;display:flex;gap:4px;}
+    .star{font-size:1.4rem;color:#333;transition:color .2s,text-shadow .2s;}
+    .star.on{color:#f1c40f;text-shadow:0 0 8px #f1c40f;}
 
-    /* armor */
-    #armor-wrap  { position: absolute; bottom: 54px; left: 24px; width: 210px; display: none; }
-    #armor-label { font-size: .72rem; color: #3498db; margin-bottom: 3px; letter-spacing: 1px; }
-    #armor-fill  { height: 10px; border-radius: 4px; transition: width .2s; background: linear-gradient(90deg,#3498db,#2980b9); }
+    /* Weapon HUD */
+    #weapon-hud{position:absolute;bottom:65px;right:24px;display:flex;gap:7px;}
+    .wslot{width:52px;height:52px;border-radius:8px;border:2px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.65);display:flex;flex-direction:column;align-items:center;justify-content:center;
+      font-size:.62rem;color:#aaa;position:relative;transition:border-color .15s,background .15s;}
+    .wslot.active{border-color:#f39c12;background:rgba(243,156,18,.15);}
+    .wslot.empty{opacity:.3;}
+    .wslot .wicon{font-size:1.3rem;margin-bottom:1px;}
+    .wslot .wkey{position:absolute;top:2px;left:4px;font-size:.5rem;color:#555;}
+    .wslot .wammo{font-size:.58rem;color:#f39c12;}
 
-    /* vehicle HP */
-    #vhp-wrap  { position: absolute; bottom: 80px; left: 24px; width: 210px; display: none; }
-    #vhp-label { font-size: .72rem; color: #e67e22; margin-bottom: 3px; letter-spacing: 1px; }
-    #vhp-fill  { height: 10px; border-radius: 4px; transition: width .2s; background: linear-gradient(90deg,#e67e22,#d35400); }
+    /* Minimap */
+    #minimap{position:absolute;top:24px;left:24px;width:160px;height:160px;
+      border-radius:50%;border:2px solid rgba(255,255,255,.2);overflow:hidden;}
+    #mm-canvas{border-radius:50%;}
 
-    /* money */
-    #money { position: absolute; bottom: 28px; right: 230px; font-size: 2rem; font-weight: 900; color: #2ecc71; text-shadow: 0 0 12px rgba(46,204,113,.5); }
+    /* Scoreboard */
+    #scoreboard{position:absolute;top:24px;right:24px;background:rgba(0,0,0,.7);
+      border-radius:8px;padding:10px 14px;min-width:210px;
+      border:1px solid rgba(255,255,255,.1);font-size:.77rem;}
+    #scoreboard h3{color:#f39c12;margin-bottom:6px;letter-spacing:1px;}
+    .srow{display:flex;justify-content:space-between;margin:2px 0;}
+    .srow .k{color:#e74c3c;} .srow .m{color:#2ecc71;}
 
-    /* wanted */
-    #wanted-wrap { position: absolute; bottom: 34px; right: 24px; display: flex; gap: 4px; align-items: center; }
-    .star { font-size: 1.4rem; color: #333; transition: color .2s, text-shadow .2s; }
-    .star.on { color: #f1c40f; text-shadow: 0 0 8px #f1c40f; }
+    /* Notifications */
+    #notifs{position:absolute;top:24px;left:50%;transform:translateX(-50%);
+      display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;}
+    .notif{background:rgba(0,0,0,.82);border-radius:6px;padding:8px 18px;
+      font-size:.9rem;font-weight:600;border-left:4px solid #e74c3c;
+      animation:fslide .3s ease;white-space:nowrap;}
+    @keyframes fslide{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 
-    /* weapon HUD */
-    #weapon-hud {
-      position: absolute; bottom: 70px; right: 24px;
-      display: flex; gap: 8px;
-    }
-    .wslot {
-      width: 54px; height: 54px; border-radius: 8px;
-      border: 2px solid rgba(255,255,255,.15); background: rgba(0,0,0,.6);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      font-size: .65rem; color: #aaa; cursor: default; transition: border-color .15s, background .15s;
-      position: relative;
-    }
-    .wslot.active { border-color: #f39c12; background: rgba(243,156,18,.15); }
-    .wslot.empty  { opacity: .35; }
-    .wslot .wicon { font-size: 1.4rem; margin-bottom: 1px; }
-    .wslot .wkey  { position: absolute; top: 2px; left: 5px; font-size: .55rem; color: #666; }
-    .wslot .wammo { font-size: .62rem; color: #f39c12; }
+    /* Crosshair */
+    #xhair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:24px;height:24px;pointer-events:none;}
+    #xhair::before,#xhair::after{content:'';position:absolute;background:rgba(255,255,255,.8);}
+    #xhair::before{width:22px;height:1px;left:1px;top:11px;}
+    #xhair::after{width:1px;height:22px;left:11px;top:1px;}
 
-    /* minimap */
-    #minimap {
-      position: absolute; top: 24px; left: 24px;
-      width: 170px; height: 170px;
-      border-radius: 50%; border: 2px solid rgba(255,255,255,.2);
-      overflow: hidden;
-    }
-    #mm-canvas { border-radius: 50%; }
+    /* Died */
+    #dead{position:absolute;inset:0;display:none;background:rgba(0,0,0,.7);
+      flex-direction:column;align-items:center;justify-content:center;}
+    #dead.show{display:flex;}
+    #dead h2{color:#e74c3c;font-size:4.5rem;font-weight:900;letter-spacing:5px;}
+    #dead p{color:#aaa;margin-top:.5rem;}
 
-    /* scoreboard */
-    #scoreboard {
-      position: absolute; top: 24px; right: 24px;
-      background: rgba(0,0,0,.65); border-radius: 8px; padding: 10px 14px;
-      min-width: 210px; border: 1px solid rgba(255,255,255,.1); font-size: .78rem;
-    }
-    #scoreboard h3 { color: #f39c12; margin-bottom: 6px; letter-spacing: 1px; }
-    .srow { display: flex; justify-content: space-between; margin: 2px 0; }
-    .srow .k { color: #e74c3c; } .srow .m { color: #2ecc71; }
+    /* Store/Refuel prompts */
+    #store-prompt{position:absolute;top:42%;left:50%;transform:translateX(-50%);
+      background:rgba(0,0,0,.82);border:1px solid #f39c12;
+      padding:8px 18px;border-radius:6px;color:#f39c12;font-size:.85rem;font-weight:700;display:none;}
+    #fuel-prompt{position:absolute;top:48%;left:50%;transform:translateX(-50%);
+      background:rgba(0,0,0,.82);border:1px solid #3498db;
+      padding:8px 18px;border-radius:6px;color:#3498db;font-size:.85rem;font-weight:700;display:none;}
+    #veh-ind{position:absolute;bottom:152px;left:24px;font-size:.78rem;color:#e67e22;font-weight:700;
+      padding:5px 12px;background:rgba(0,0,0,.6);border-radius:6px;border:1px solid #e67e22;display:none;}
+    #weather-ind{position:absolute;top:204px;left:24px;font-size:.78rem;color:#aaa;
+      background:rgba(0,0,0,.5);padding:4px 10px;border-radius:6px;display:none;}
+    #clock{position:absolute;top:204px;left:130px;font-size:.78rem;color:#ddd;
+      background:rgba(0,0,0,.5);padding:4px 10px;border-radius:6px;}
 
-    /* notifications */
-    #notifs {
-      position: absolute; top: 24px; left: 50%; transform: translateX(-50%);
-      display: flex; flex-direction: column; gap: 6px; align-items: center;
-      pointer-events: none;
-    }
-    .notif {
-      background: rgba(0,0,0,.8); border-radius: 6px; padding: 8px 18px;
-      font-size: .9rem; font-weight: 600; border-left: 4px solid #e74c3c;
-      animation: fslide .3s ease; white-space: nowrap;
-    }
-    @keyframes fslide { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
+    /* Owner Panel */
+    #owner-panel{position:absolute;top:210px;right:24px;background:rgba(0,0,0,.85);
+      border:2px solid #FFD700;border-radius:10px;padding:12px 16px;display:none;
+      min-width:220px;pointer-events:all;}
+    #owner-panel h3{color:#FFD700;font-size:.85rem;letter-spacing:2px;margin-bottom:10px;text-align:center;}
+    .ob{display:block;width:100%;margin-bottom:6px;padding:7px 12px;
+      background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.25);
+      color:#FFD700;border-radius:6px;font-size:.78rem;font-weight:700;
+      cursor:pointer;text-align:left;transition:background .15s;pointer-events:all;}
+    .ob:hover{background:rgba(255,215,0,.22);}
+    .ob.active{background:rgba(255,215,0,.32);border-color:#FFD700;}
+    .vsrow{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;}
+    .vbtn{flex:1;min-width:52px;padding:5px 3px;background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);color:#ddd;border-radius:5px;
+      font-size:.68rem;cursor:pointer;text-align:center;pointer-events:all;}
+    .vbtn:hover{background:rgba(255,215,0,.18);border-color:#FFD700;color:#FFD700;}
 
-    /* crosshair */
-    #xhair { position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; }
-    #xhair::before,#xhair::after { content:''; position:absolute; background:rgba(255,255,255,.75); }
-    #xhair::before { width:16px; height:1px; left:-8px; top:0; }
-    #xhair::after  { width:1px; height:16px; left:0; top:-8px; }
-
-    /* dead overlay */
-    #dead { position:absolute; inset:0; display:none; background:rgba(0,0,0,.65); flex-direction:column; align-items:center; justify-content:center; }
-    #dead.show { display:flex; }
-    #dead h2 { color:#e74c3c; font-size:4rem; font-weight:900; letter-spacing:4px; }
-    #dead p  { color:#aaa; margin-top:.5rem; }
-
-    /* store prompt */
-    #store-prompt {
-      position:absolute; top:45%; left:50%; transform:translateX(-50%);
-      background:rgba(0,0,0,.8); border:1px solid #f39c12;
-      padding:8px 18px; border-radius:6px; color:#f39c12; font-size:.85rem; font-weight:700; display:none;
-    }
-    /* vehicle indicator */
-    #veh-ind {
-      position:absolute; bottom:105px; left:24px;
-      font-size:.8rem; color:#e67e22; font-weight:700;
-      padding:5px 12px; background:rgba(0,0,0,.55); border-radius:6px;
-      border:1px solid #e67e22; display:none;
-    }
-
-    /* ── Owner Panel ── */
-    #owner-panel {
-      position: absolute; top: 210px; right: 24px;
-      background: rgba(0,0,0,.8); border: 2px solid #FFD700;
-      border-radius: 10px; padding: 12px 16px; display: none;
-      min-width: 220px; pointer-events: all;
-    }
-    #owner-panel h3 { color: #FFD700; font-size: .85rem; letter-spacing: 2px; margin-bottom: 10px; text-align: center; }
-    .ob {
-      display: block; width: 100%; margin-bottom: 6px; padding: 7px 12px;
-      background: rgba(255,215,0,.1); border: 1px solid rgba(255,215,0,.3);
-      color: #FFD700; border-radius: 6px; font-size: .8rem; font-weight: 700;
-      cursor: pointer; text-align: left; transition: background .15s; pointer-events: all;
-    }
-    .ob:hover { background: rgba(255,215,0,.25); }
-    .ob.active { background: rgba(255,215,0,.35); border-color: #FFD700; }
-    .ob-section { color: #888; font-size: .7rem; margin: 8px 0 4px; letter-spacing: 1px; }
-    .vsrow { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
-    .vbtn {
-      flex: 1; min-width: 55px; padding: 6px 4px; background: rgba(255,255,255,.07);
-      border: 1px solid rgba(255,255,255,.15); color: #ddd; border-radius: 5px;
-      font-size: .72rem; cursor: pointer; text-align: center; pointer-events: all;
-    }
-    .vbtn:hover { background: rgba(255,215,0,.2); border-color: #FFD700; color: #FFD700; }
-    #godmode-status { font-size: .7rem; color: #aaa; text-align: center; margin-top: 4px; }
+    /* Sound toggle */
+    #sound-btn{position:absolute;bottom:28px;left:230px;background:rgba(0,0,0,.6);
+      border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:6px;
+      font-size:.78rem;cursor:pointer;pointer-events:all;}
   </style>
 </head>
 <body>
 
 <div id="lobby">
-  <h1>GTA ONLINE</h1>
+  <h1>GTA ONLINE 3D</h1>
   <p class="sub">MULTIPLAYER CLONE</p>
-  <input id="name-input" type="text" placeholder="Dein Name eingeben" maxlength="20" />
+  <input id="name-input" type="text" placeholder="Spielername" maxlength="20"/>
   <button id="play-btn">SPIELEN</button>
   <div class="ctrl">
     <span>WASD</span> Bewegen &nbsp;|&nbsp; <span>Maus</span> Zielen &nbsp;|&nbsp; <span>LMB</span> Schießen<br>
-    <span>1–6</span> Waffe wechseln &nbsp;|&nbsp; <span>E</span> Auto ein/aussteigen &nbsp;|&nbsp; <span>F</span> Store ausrauben<br>
-    <span>Shift</span> Sprinten/Gas &nbsp;|&nbsp; <span>Mausrad</span> Zoom<br>
-    <span style="color:#FFD700">Name "brafovin"</span> = Owner-Modus (alle Waffen, Godmode, Fahrzeug-Spawner)
+    <span>1–6</span> Waffe &nbsp;|&nbsp; <span>E</span> Auto &nbsp;|&nbsp; <span>F</span> Raub &nbsp;|&nbsp; <span>G</span> Tanken &nbsp;|&nbsp; <span>Shift</span> Gas/Sprint<br>
+    <span>Mausrad</span> Kamera-Zoom &nbsp;|&nbsp; <span>Rechtsklick+Ziehen</span> Kamera drehen<br>
+    <span style="color:#FFD700">Name "brafovin"</span> = Owner (alle Waffen · Godmode · Fahrzeug-Spawner)
   </div>
 </div>
 
-<canvas id="canvas"></canvas>
+<canvas id="three-canvas"></canvas>
 
 <div id="hud">
   <div id="xhair"></div>
 
-  <!-- Health / Armor / Vehicle HP -->
   <div id="hp-wrap">
     <div id="hp-label">❤️ GESUNDHEIT</div>
-    <div class="bar-bg"><div id="hp-fill" style="width:100%"></div></div>
+    <div class="bbar"><div id="hp-fill" style="width:100%"></div></div>
   </div>
   <div id="armor-wrap">
     <div id="armor-label">🛡️ RÜSTUNG</div>
-    <div class="bar-bg"><div id="armor-fill" style="width:100%"></div></div>
+    <div class="bbar"><div id="armor-fill" style="width:100%"></div></div>
   </div>
   <div id="vhp-wrap">
     <div id="vhp-label">🚗 FAHRZEUG</div>
-    <div class="bar-bg"><div id="vhp-fill" style="width:100%"></div></div>
+    <div class="bbar"><div id="vhp-fill" style="width:100%"></div></div>
+  </div>
+  <div id="fuel-wrap">
+    <div id="fuel-label">⛽ KRAFTSTOFF</div>
+    <div class="bbar"><div id="fuel-fill" style="width:100%"></div></div>
   </div>
   <div id="veh-ind"></div>
 
   <div id="money">$0</div>
-
-  <!-- Weapon slots -->
-  <div id="weapon-hud"></div>
-
-  <!-- Wanted -->
   <div id="wanted-wrap">
     <span class="star" id="s1">★</span><span class="star" id="s2">★</span>
     <span class="star" id="s3">★</span><span class="star" id="s4">★</span>
     <span class="star" id="s5">★</span>
   </div>
 
-  <!-- Minimap -->
-  <div id="minimap">
-    <canvas id="mm-canvas" width="170" height="170"></canvas>
-  </div>
+  <div id="weapon-hud"></div>
 
-  <!-- Scoreboard -->
+  <div id="minimap"><canvas id="mm-canvas" width="160" height="160"></canvas></div>
+
   <div id="scoreboard">
     <h3>🏆 RANGLISTE</h3>
     <div id="score-list"></div>
   </div>
 
-  <!-- Owner Panel -->
   <div id="owner-panel">
     <h3>👑 OWNER PANEL</h3>
     <button class="ob" id="btn-godmode">🛡️ Godmode: AUS</button>
-    <button class="ob" id="btn-refill">🔫 Alle Waffen nachladen</button>
+    <button class="ob" id="btn-refill">🔫 Waffen nachladen</button>
     <button class="ob" id="btn-clearwanted">⭐ Wanted löschen</button>
-    <button class="ob" id="btn-maxmoney">💰 $9.999.999 geben</button>
-    <p class="ob-section">FAHRZEUG SPAWNEN</p>
+    <button class="ob" id="btn-maxmoney">💰 $9.999.999</button>
+    <p style="color:#555;font-size:.68rem;margin:8px 0 4px;letter-spacing:1px;">FAHRZEUG SPAWNEN</p>
     <div class="vsrow">
       <button class="vbtn" data-v="sedan">🚗 Sedan</button>
       <button class="vbtn" data-v="sports">🏎️ Sports</button>
@@ -241,23 +203,20 @@
       <button class="vbtn" data-v="bike">🏍️ Bike</button>
       <button class="vbtn" data-v="tank">🪖 Panzer</button>
     </div>
-    <div id="godmode-status"></div>
   </div>
 
-  <!-- Notifications -->
   <div id="notifs"></div>
-
-  <!-- Store prompt -->
   <div id="store-prompt">F — Store ausrauben</div>
-
-  <!-- Dead overlay -->
-  <div id="dead">
-    <h2>WASTED</h2>
-    <p>Respawn in 3 Sekunden...</p>
-  </div>
+  <div id="fuel-prompt">G — Tanken</div>
+  <div id="weather-ind"></div>
+  <div id="clock">12:00</div>
+  <div id="dead"><h2>WASTED</h2><p>Respawn in 3 Sekunden...</p></div>
+  <button id="sound-btn">🔊 Ton</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
+<script src="/js/audio.js"></script>
 <script src="/js/game.js"></script>
 </body>
 </html>
